@@ -1,0 +1,239 @@
+Directory structure:
+└── /src/
+    └── independent_crew/
+        ├── tools/
+        │   ├── __init__.py
+        │   ├── __pycache__/
+        │   └── custom_tool.py
+        ├── config/
+        │   ├── agents.yaml
+        │   └── tasks.yaml
+        ├── run_agent.py
+        ├── __init__.py
+        ├── __pycache__/
+        ├── crew.py
+        ├── run_task.py
+        └── main.py
+
+================================================
+File: /independent_crew/tools/__init__.py
+================================================
+from .custom_tool import WebSearchTool
+
+__all__ = ["WebSearchTool"]
+
+================================================
+File: /independent_crew/tools/custom_tool.py
+================================================
+from crewai.tools import BaseTool
+from typing import Type
+from pydantic import BaseModel, Field
+
+
+class WebSearchToolInput(BaseModel):
+    """Input schema for MyCustomTool."""
+    query: str = Field(..., description="The search query")
+
+
+class WebSearchTool(BaseTool):
+    name: str = "Web Search"
+    description: str = "A tool that can be used to search the web."
+    args_schema: Type[BaseModel] = WebSearchToolInput
+
+    def _run(self, query: str) -> str:
+        """Search the web for information."""
+        print(f"Simulating web search for: {query}")
+        return f"Search results for: {query} - This is a simulated result."
+
+
+================================================
+File: /independent_crew/config/agents.yaml
+================================================
+researcher:
+  role: "Senior Research Analyst"
+  goal: "Uncover groundbreaking technologies in AI"
+  backstory: "A highly skilled researcher with a passion for AI advancements."
+  llm: gemini/gemini-1.5-flash
+  allow_delegation: false
+
+================================================
+File: /independent_crew/config/tasks.yaml
+================================================
+research_task:
+  description: "Research the latest developments in AI for 2024."
+  expected_output: "A report summarizing the key AI trends."
+  agent: researcher
+
+================================================
+File: /independent_crew/run_agent.py
+================================================
+from crewai import Agent, Task
+from .crew import IndependentCrew
+from .tools import WebSearchTool
+import os
+
+# Create an instance of the IndependentCrew class to access its configurations
+crew_instance = IndependentCrew()
+
+# -- Option 1: Create agent from config and execute a custom task --
+# Access the agents configuration
+agent_config = crew_instance.agents_config['researcher']
+
+# Now you can create your agent using this configuration
+researcher_agent = Agent(
+    **agent_config,
+    tools=[WebSearchTool()],
+    verbose=True
+)
+
+# Create a Task object with description, expected_output, and agent
+task = Task(
+    description="What are the latest advancements in AI?",
+    expected_output="A report summarizing the latest advancements in AI.",
+    agent=researcher_agent
+)
+
+# Execute the task with the agent
+result = researcher_agent.execute_task(task)
+print("Result from custom task:", result)
+
+# -- Option 2: Reuse agent and task from crew definition --
+researcher_agent = crew_instance.researcher()  # Get agent from crew definition
+research_task = crew_instance.research_task()  # Get task from crew definition
+research_result = researcher_agent.execute_task(research_task)
+print("Result from crew-defined task:", research_result)
+
+================================================
+File: /independent_crew/crew.py
+================================================
+from crewai import Agent, Crew, Process, Task
+from crewai.project import CrewBase, agent, crew, task
+from .tools import WebSearchTool
+
+
+@CrewBase
+class IndependentCrew():
+	"""IndependentCrew crew"""
+
+	agents_config = 'config/agents.yaml'
+	tasks_config = 'config/tasks.yaml'
+
+	# If you would like to add tools to your agents, you can learn more about it here:
+	# https://docs.crewai.com/concepts/agents#agent-tools
+	@agent
+	def researcher(self) -> Agent:
+		return Agent(
+			config=self.agents_config['researcher'],
+			verbose=True,
+			tools=[WebSearchTool()]
+		)
+
+	@task
+	def research_task(self) -> Task:
+		return Task(
+			config=self.tasks_config['research_task'],
+		)
+
+	@crew
+	def crew(self) -> Crew:
+		"""Creates the IndependentCrew crew"""
+
+		return Crew(
+			agents=self.agents, # Automatically created by the @agent decorator
+			tasks=self.tasks, # Automatically created by the @task decorator
+			process=Process.sequential,
+			verbose=True,
+		)
+
+
+================================================
+File: /independent_crew/run_task.py
+================================================
+from crewai import Agent, Task
+from .crew import IndependentCrew
+from .tools import WebSearchTool
+from concurrent.futures import Future
+import os
+
+# Create an instance of the IndependentCrew class to access its configurations
+crew_instance = IndependentCrew()
+
+# -- Option 1: Create task from config and execute with a created agent --
+
+# Access the agents configuration
+agent_config = crew_instance.agents_config['researcher']
+
+# Now you can create your agent using this configuration
+researcher_agent = Agent(
+    **agent_config,
+    tools=[WebSearchTool()],
+    verbose=True
+)
+
+# Access the tasks configuration
+research_task_config = crew_instance.tasks_config['research_task']
+
+# Create the task using its configuration
+research_task = Task(
+    **research_task_config,
+    verbose=True
+)
+
+# Execute the task synchronously
+output = research_task.execute_sync(agent=researcher_agent)
+print("Synchronous Task Output:", output.raw)
+
+# Execute the task asynchronously
+future_output: Future = research_task.execute_async(agent=researcher_agent)
+# Perform other operations...
+
+# Retrieve the result
+output = future_output.result()
+print("Asynchronous Task Output:", output.raw)
+
+custom_context = "Focus on AI in healthcare for the year 2023."
+custom_tools = []  # You can add or remove tools here
+
+output = research_task.execute_sync(
+    agent=researcher_agent,
+    context=custom_context,
+    tools=custom_tools
+)
+print("Task Output with Custom Context:", output.raw)
+
+# -- Option 2: Reuse task from crew definition and provide custom context --
+research_task = crew_instance.research_task()
+result = research_task.execute_sync(context="What are the ethical implications of AI?", agent=researcher_agent)
+print("Task result with custom context:", result)
+
+================================================
+File: /independent_crew/main.py
+================================================
+#!/usr/bin/env python
+import warnings
+
+from .crew import IndependentCrew
+
+warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
+
+
+# This main file is intended to be a way for you to run your
+# crew locally, so refrain from adding unnecessary logic into this file.
+# Replace with inputs you want to test with, it will automatically
+# interpolate any tasks and agents information
+
+def run():
+    """
+    Run the crew.
+    """
+
+    try:
+        IndependentCrew().crew().kickoff()
+    except Exception as e:
+        raise Exception(f"An error occurred while running the crew: {e}")
+
+
+if __name__ == "__main__":
+    run()
+
+

@@ -1,0 +1,4 @@
+research_task:
+  description: "Research the latest developments in AI for 2024."
+  expected_output: "A report summarizing the key AI trends."
+  agent: researcher
