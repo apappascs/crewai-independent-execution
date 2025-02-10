@@ -1,3 +1,18 @@
+<a href="https://idx.google.com/import?url=https%3A%2F%2Fgithub.com%2Fapappascs%2Fcrewai-independent-execution">
+  <picture>
+    <source
+      media="(prefers-color-scheme: dark)"
+      srcset="https://cdn.idx.dev/btn/open_dark_32.svg">
+    <source
+      media="(prefers-color-scheme: light)"
+      srcset="https://cdn.idx.dev/btn/open_light_32.svg">
+    <img
+      height="32"
+      alt="Open in IDX"
+      src="https://cdn.idx.dev/btn/open_purple_32.svg">
+  </picture>
+</a>
+
 # IndependentCrew: CrewAI Development Through Isolation
 
 This project is a practical guide to demonstrate the power of **running agents and tasks independently within the CrewAI framework**. While CrewAI excels at orchestrating complex agent collaborations, the ability to isolate and test individual components is invaluable during development. This approach simplifies debugging, accelerates iteration, and promotes a modular design for your AI crews.
